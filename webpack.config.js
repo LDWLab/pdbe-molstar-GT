@@ -54,7 +54,7 @@ const molstarConfig = {
     watchOptions: {
         aggregateTimeout: 750
     },
-    devtool: 'eval-source-map'
+    //devtool: 'eval-source-map'
 }
 
 const componentConfig = {
