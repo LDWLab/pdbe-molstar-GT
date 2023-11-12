@@ -129,6 +129,112 @@
 ].map(([r, g, b]) => Color.fromRgb(r, g, b));
  const CustomDataDefaultColor = Color(0x999999);
 
+
+ const AssociatedDataPalette: Color[] = [ 
+    [68, 1, 84],
+    [69, 4, 87],
+    [70, 8, 92],
+    [71, 13, 96],
+    [71, 16, 99],
+    [72, 20, 103],
+    [72, 23, 105],
+    [72, 27, 109],
+    [72, 30, 111],
+    [72, 33, 114],
+    [72, 36, 117],
+    [72, 40, 120],
+    [71, 44, 122],
+    [71, 46, 124],
+    [70, 50, 126],
+    [70, 52, 128],
+    [69, 56, 130],
+    [68, 58, 131],
+    [67, 62, 133],
+    [66, 64, 134],
+    [65, 68, 135],
+    [63, 71, 136],
+    [62, 73, 137],
+    [61, 77, 138],
+    [60, 79, 138],
+    [59, 82, 139],
+    [58, 84, 139],
+    [56, 87, 140],
+    [55, 90, 141],
+    [54, 93, 141],
+    [52, 96, 141],
+    [51, 98, 141],
+    [50, 101, 142],
+    [49, 103, 142],
+    [48, 106, 142],
+    [47, 108, 142],
+    [46, 111, 142],
+    [45, 112, 142],
+    [44, 116, 142],
+    [43, 118, 142],
+    [42, 120, 142],
+    [41, 123, 142],
+    [40, 125, 142],
+    [39, 128, 142],
+    [38, 130, 142],
+    [37, 132, 142],
+    [36, 134, 142],
+    [35, 137, 142],
+    [34, 140, 141],
+    [33, 142, 141],
+    [33, 145, 141],
+    [32, 146, 140],
+    [31, 149, 139],
+    [31, 151, 139],
+    [31, 154, 138],
+    [30, 156, 137],
+    [31, 159, 136],
+    [31, 161, 135],
+    [32, 163, 134],
+    [33, 166, 133],
+    [34, 168, 132],
+    [36, 171, 130],
+    [38, 173, 129],
+    [41, 175, 127],
+    [44, 177, 126],
+    [47, 180, 124],
+    [52, 182, 121],
+    [55, 184, 120],
+    [59, 187, 117],
+    [63, 188, 115],
+    [68, 191, 112],
+    [72, 193, 110],
+    [78, 195, 107],
+    [82, 197, 105],
+    [88, 199, 101],
+    [92, 200, 99],
+    [98, 203, 95],
+    [105, 205, 91],
+    [110, 206, 88],
+    [117, 208, 84],
+    [122, 209, 81],
+    [129, 211, 77],
+    [134, 212, 73],
+    [142, 214, 69],
+    [147, 215, 65],
+    [155, 217, 60],
+    [162, 219, 55],
+    [168, 219, 52],
+    [176, 221, 47],
+    [181, 222, 43],
+    [189, 223, 38],
+    [194, 223, 35],
+    [202, 225, 31],
+    [208, 225, 28],
+    [216, 226, 26],
+    [223, 227, 24],
+    [228, 228, 24],
+    [236, 229, 27],
+    [241, 230, 29],
+    [248, 231, 33]
+    
+].map(([r, g, b]) => Color.fromRgb(r, g, b));
+ const AssociatedDataDefaultColor = Color(0x999999);
+
  const TwinConsPalette: Color[] = [
     [8, 48, 107],
 [8, 51, 112],
@@ -373,6 +479,48 @@ export const CustomData = CustomElementProperty.create<number>({
             return CustomDataPalette[e - 1];
         },
         defaultColor: CustomDataDefaultColor
+    },
+    getLabel(e) {
+        if (e === 100) return `Evolutionary Conservation: Insufficient Data`;
+        return e ? `Evolutionary Conservation: ${e}` : void 0;
+    },
+});
+export const AssociatedData = CustomElementProperty.create<number>({
+    name: 'associated-data-wrapper',
+    label: 'Associated Data1',
+    type: 'static',
+
+    async getData(model: Model, ctx: CustomProperty.Context) {
+        const conservationMap = new Map<string, number>();
+        const annotations = data['AD'];
+        for (const e of annotations) {
+            for (const r of e.ids) {
+                conservationMap.set(r, e.annotation);
+            }
+        }
+        const map = new Map<ElementIndex, number>();
+        const { _rowCount: residueCount } = model.atomicHierarchy.residues;
+        const { offsets: residueOffsets } = model.atomicHierarchy.residueAtomSegments;
+        const chainIndex = model.atomicHierarchy.chainAtomSegments.index;
+
+        for (let rI = 0 as ResidueIndex; rI < residueCount; rI++) {
+            const cI = chainIndex[residueOffsets[rI]];
+            const key = `${model.atomicHierarchy.chains.auth_asym_id.value(cI)} ${model.atomicHierarchy.residues.auth_seq_id.value(rI)}`;
+
+            if (!conservationMap.has(key)) continue;
+            const ann = conservationMap.get(key)!;
+            for (let aI = residueOffsets[rI]; aI < residueOffsets[rI + 1]; aI++) {
+                map.set(aI, ann);
+            }
+        }
+        return { value: map };
+    },
+    coloring: {
+        getColor(e: number) {
+            if (e < 1 || e > 100) return AssociatedDataDefaultColor;
+            return AssociatedDataPalette[e - 1];
+        },
+        defaultColor: AssociatedDataDefaultColor
     },
     getLabel(e) {
         if (e === 100) return `Evolutionary Conservation: Insufficient Data`;
