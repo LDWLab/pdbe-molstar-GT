@@ -43,7 +43,7 @@ import { AnimateStructureSpin } from 'Molstar/mol-plugin-state/animation/built-i
 import { AnimateCameraRock } from 'Molstar/mol-plugin-state/animation/built-in/camera-rock';
 import { AnimateAssemblyUnwind } from 'Molstar/mol-plugin-state/animation/built-in/assembly-unwind';
 //import { ModelInfo2, StateElements } from './helpers';
-import { ShannonEntropy } from './annotation';
+import { AESData, HelixData, PhaseData, ShannonEntropy } from './annotation';
 import { TwinConsData } from './annotation';
 import { CustomData } from './annotation';
 import { AssociatedData } from './annotation';
@@ -302,6 +302,18 @@ class PDBeMolstarPlugin {
         this.plugin.representation.structure.themes.colorThemeRegistry.add(AssociatedData.colorThemeProvider!);
         this.plugin.managers.lociLabels.addProvider(AssociatedData.labelProvider!);
         this.plugin.customModelProperties.register(AssociatedData.propertyProvider, true);
+        
+        this.plugin.representation.structure.themes.colorThemeRegistry.add(HelixData.colorThemeProvider!);
+        this.plugin.managers.lociLabels.addProvider(HelixData.labelProvider!);
+        this.plugin.customModelProperties.register(HelixData.propertyProvider, true);
+
+        this.plugin.representation.structure.themes.colorThemeRegistry.add(PhaseData.colorThemeProvider!);
+        this.plugin.managers.lociLabels.addProvider(PhaseData.labelProvider!);
+        this.plugin.customModelProperties.register(PhaseData.propertyProvider, true);
+
+        this.plugin.representation.structure.themes.colorThemeRegistry.add(AESData.colorThemeProvider!);
+        this.plugin.managers.lociLabels.addProvider(AESData.labelProvider!);
+        this.plugin.customModelProperties.register(AESData.propertyProvider, true);
         // Save renderer defaults
         this.defaultRendererProps = {...this.plugin.canvas3d!.props.renderer};
 
@@ -741,6 +753,57 @@ class PDBeMolstarPlugin {
             }
             await PluginCommands.State.Update(this.plugin, { state, tree });
         },
+        phaseData: async (params?: { sequence?: boolean, het?: boolean, keepStyle?: boolean, data: [] }) => {
+            if (!params || !params.keepStyle) {
+               // await this.updateStyle({ sequence: { kind: 'spacefill' } }, true);
+            }
+            const state = this.state;
+            const tree = state.build();
+            
+            const colorTheme = { name: PhaseData.propertyProvider.descriptor.name, params: this.plugin.representation.structure.themes.colorThemeRegistry.get(PhaseData.propertyProvider.descriptor.name).defaultValues };
+            
+            if (!params || !!params.sequence) {
+                tree.to(StateElements.SequenceVisual).update(StateTransforms.Representation.StructureRepresentation3D, old => ({ ...old, colorTheme }));
+            }
+            if (params && !!params.het) {
+                tree.to(StateElements.HetVisual).update(StateTransforms.Representation.StructureRepresentation3D, old => ({ ...old, colorTheme }));
+            }
+            await PluginCommands.State.Update(this.plugin, { state, tree });
+        },
+        helixData: async (params?: { sequence?: boolean, het?: boolean, keepStyle?: boolean, data: [] }) => {
+            if (!params || !params.keepStyle) {
+               // await this.updateStyle({ sequence: { kind: 'spacefill' } }, true);
+            }
+            const state = this.state;
+            const tree = state.build();
+            
+            const colorTheme = { name: HelixData.propertyProvider.descriptor.name, params: this.plugin.representation.structure.themes.colorThemeRegistry.get(HelixData.propertyProvider.descriptor.name).defaultValues };
+            
+            if (!params || !!params.sequence) {
+                tree.to(StateElements.SequenceVisual).update(StateTransforms.Representation.StructureRepresentation3D, old => ({ ...old, colorTheme }));
+            }
+            if (params && !!params.het) {
+                tree.to(StateElements.HetVisual).update(StateTransforms.Representation.StructureRepresentation3D, old => ({ ...old, colorTheme }));
+            }
+            await PluginCommands.State.Update(this.plugin, { state, tree });
+        },
+        aesData: async (params?: { sequence?: boolean, het?: boolean, keepStyle?: boolean, data: [] }) => {
+            if (!params || !params.keepStyle) {
+               // await this.updateStyle({ sequence: { kind: 'spacefill' } }, true);
+            }
+            const state = this.state;
+            const tree = state.build();
+            
+            const colorTheme = { name: AESData.propertyProvider.descriptor.name, params: this.plugin.representation.structure.themes.colorThemeRegistry.get(AESData.propertyProvider.descriptor.name).defaultValues };
+            
+            if (!params || !!params.sequence) {
+                tree.to(StateElements.SequenceVisual).update(StateTransforms.Representation.StructureRepresentation3D, old => ({ ...old, colorTheme }));
+            }
+            if (params && !!params.het) {
+                tree.to(StateElements.HetVisual).update(StateTransforms.Representation.StructureRepresentation3D, old => ({ ...old, colorTheme }));
+            }
+            await PluginCommands.State.Update(this.plugin, { state, tree });
+        },
         twinCons: async (params?: { sequence?: boolean, het?: boolean, keepStyle?: boolean, data: [] }) => {
             if (!params || !params.keepStyle) {
                // await this.updateStyle({ sequence: { kind: 'spacefill' } }, true);
@@ -776,19 +839,23 @@ class PDBeMolstarPlugin {
             this.plugin.managers.interactivity.lociHighlights.highlightOnly({ loci: EmptyLoci });
             if(this.isHighlightColorUpdated) this.visual.reset({highlightColor: true});
         },
+
         colorByChain: async(data: string[]) => {
             let structureData = this.plugin.managers.structure.hierarchy.current.structures;
             /*let r1 = 0
             let b1 = 0
             let g1 = 0
             let diff = 230/(structureData.length - 1)*/
+            if(structureData.length - data.length != 1) {
+                throw new Error('Wrong number of structures')
+            }
             let i = 0
             for await (const s of structureData) {
                 if (i > 0) {
                 let color = data[i - 1]
                 //await this.plugin.managers.structure.component.updateRepresentationsTheme(s.components, { color: 'uniform', colorParams: { value: this.normalizeColor(params.nonSelectedColor) } });
                 await this.plugin.managers.structure.component.updateRepresentationsTheme(s.components, { color: 'uniform', colorParams: { value: this.normalizeColor(color) } });
-                
+                await new Promise<void>(resolve => setTimeout(resolve, 1000));
             }
             i += 1
         }

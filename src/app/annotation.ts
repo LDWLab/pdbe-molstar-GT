@@ -131,7 +131,7 @@
 
 
  const AssociatedDataPalette: Color[] = [ 
-    [68, 1, 84],
+    /*[68, 1, 84],
     [69, 4, 87],
     [70, 8, 92],
     [71, 13, 96],
@@ -230,7 +230,8 @@
     [228, 228, 24],
     [236, 229, 27],
     [241, 230, 29],
-    [248, 231, 33]
+    [248, 231, 33]*/
+    [128,0,255], [123,6,255], [118,16,255], [112,23,255], [108,31,254], [103,39,254], [97,47,254], [92,56,253], [87,62,253], [82,71,252], [78,77,252], [71,86,251], [67,94,251], [61,101,250], [56,108,249], [52,115,248], [45,123,247], [42,129,246], [35,137,245], [32,142,244], [26,150,243], [20,156,241], [16,162,240], [10,168,239], [6,174,237], [1,181,235], [5,185,234], [10,192,232], [15,196,231], [20,202,229], [26,206,227], [31,211,225], [35,215,224], [41,219,222], [46,223,220], [50,227,218], [57,231,215], [60,234,213], [67,237,211], [71,240,209], [77,243,206], [82,245,204], [86,247,202], [92,249,199], [96,250,197], [103,252,194], [107,253,192], [112,254,188], [118,254,186], [122,255,183], [128,255,180], [133,255,177], [137,254,175], [143,254,172], [148,253,168], [152,252,166], [159,250,162], [163,249,159], [169,247,156], [173,245,153], [179,243,150], [184,240,147], [188,237,144], [195,234,139], [198,231,137], [205,227,133], [209,223,130], [214,219,126], [220,215,123], [224,211,119], [230,206,116], [235,202,112], [240,196,108], [245,192,105], [250,185,101], [254,181,98], [255,174,94], [255,168,90], [255,162,86], [255,156,83], [255,150,79], [255,142,74], [255,137,71], [255,129,67], [255,123,64], [255,115,59], [255,108,55], [255,101,52], [255,94,48], [255,86,44], [255,77,39], [255,71,36], [255,62,31], [255,56,28], [255,47,23], [255,39,20], [255,31,16], [255,23,12], [255,16,8], [255,6,3]
     
 ].map(([r, g, b]) => Color.fromRgb(r, g, b));
  const AssociatedDataDefaultColor = Color(0x999999);
@@ -339,6 +340,18 @@
 ].reverse().map(([r, g, b]) => Color.fromRgb(r, g, b));
  const TwinConsDefaultColor = Color(0x999999);
 
+ function hasValues(obj: any): boolean {
+    if (obj == undefined) {
+        return false
+    }
+    for (const key in obj) {
+      if (obj.hasOwnProperty(key) && Array.isArray(obj[key]) && obj[key].length > 0) {
+        return true; 
+      }
+    }
+    return false; 
+  }
+  
 
 var data:any = []
 let check = function() {
@@ -347,10 +360,11 @@ let check = function() {
         check();
       else {
         let getAnnotationArray = (window as any).getAnnotationArray;
-        if (getAnnotationArray().length == 0) {
+        if (!hasValues(getAnnotationArray())) {
             check();
         } else {
             data = getAnnotationArray()
+            //console.log(data)
         }
       }
     }, 1000);
@@ -527,3 +541,135 @@ export const AssociatedData = CustomElementProperty.create<number>({
         return e ? `Evolutionary Conservation: ${e}` : void 0;
     },
 });
+
+export const HelixData = CustomElementProperty.create<number>({
+    name: 'helix-data-wrapper',
+    label: 'Helix Data',
+    type: 'static',
+
+    async getData(model: Model, ctx: CustomProperty.Context) {
+        const conservationMap = new Map<string, number>();
+        const annotations = data['HD'];
+        for (const e of annotations) {
+            for (const r of e.ids) {
+                conservationMap.set(r, e.annotation);
+            }
+        }
+        const map = new Map<ElementIndex, number>();
+        const { _rowCount: residueCount } = model.atomicHierarchy.residues;
+        const { offsets: residueOffsets } = model.atomicHierarchy.residueAtomSegments;
+        const chainIndex = model.atomicHierarchy.chainAtomSegments.index;
+
+        for (let rI = 0 as ResidueIndex; rI < residueCount; rI++) {
+            const cI = chainIndex[residueOffsets[rI]];
+            const key = `${model.atomicHierarchy.chains.auth_asym_id.value(cI)} ${model.atomicHierarchy.residues.auth_seq_id.value(rI)}`;
+
+            if (!conservationMap.has(key)) continue;
+            const ann = conservationMap.get(key)!;
+            for (let aI = residueOffsets[rI]; aI < residueOffsets[rI + 1]; aI++) {
+                map.set(aI, ann);
+            }
+        }
+        return { value: map };
+    },
+    coloring: {
+        getColor(e: number) {
+            if (e < 1 || e > 100) return AssociatedDataDefaultColor;
+            return AssociatedDataPalette[e - 1];
+        },
+        defaultColor: AssociatedDataDefaultColor
+    },
+    getLabel(e) {
+        if (e === 100) return `Evolutionary Conservation: Insufficient Data`;
+        return e ? `Evolutionary Conservation: ${e}` : void 0;
+    },
+});
+
+export const PhaseData = CustomElementProperty.create<number>({
+    name: 'phase-data-wrapper',
+    label: 'Phase Data',
+    type: 'static',
+
+    async getData(model: Model, ctx: CustomProperty.Context) {
+        const conservationMap = new Map<string, number>();
+        const annotations = data['PD'];
+        for (const e of annotations) {
+            for (const r of e.ids) {
+                conservationMap.set(r, e.annotation);
+            }
+        }
+        const map = new Map<ElementIndex, number>();
+        const { _rowCount: residueCount } = model.atomicHierarchy.residues;
+        const { offsets: residueOffsets } = model.atomicHierarchy.residueAtomSegments;
+        const chainIndex = model.atomicHierarchy.chainAtomSegments.index;
+
+        for (let rI = 0 as ResidueIndex; rI < residueCount; rI++) {
+            const cI = chainIndex[residueOffsets[rI]];
+            const key = `${model.atomicHierarchy.chains.auth_asym_id.value(cI)} ${model.atomicHierarchy.residues.auth_seq_id.value(rI)}`;
+
+            if (!conservationMap.has(key)) continue;
+            const ann = conservationMap.get(key)!;
+            for (let aI = residueOffsets[rI]; aI < residueOffsets[rI + 1]; aI++) {
+                map.set(aI, ann);
+            }
+        }
+        return { value: map };
+    },
+    coloring: {
+        getColor(e: number) {
+            if (e < 1 || e > 100) return AssociatedDataDefaultColor;
+            return AssociatedDataPalette[e - 1];
+        },
+        defaultColor: AssociatedDataDefaultColor
+    },
+    getLabel(e) {
+        if (e === 100) return `Evolutionary Conservation: Insufficient Data`;
+        return e ? `Evolutionary Conservation: ${e}` : void 0;
+    },
+});
+
+export const AESData = CustomElementProperty.create<number>({
+    name: 'aes-data-wrapper',
+    label: 'AES Data',
+    type: 'static',
+
+    async getData(model: Model, ctx: CustomProperty.Context) {
+        const conservationMap = new Map<string, number>();
+        const annotations = data['AESD'];
+        for (const e of annotations) {
+            for (const r of e.ids) {
+                conservationMap.set(r, e.annotation);
+            }
+        }
+        const map = new Map<ElementIndex, number>();
+        const { _rowCount: residueCount } = model.atomicHierarchy.residues;
+        const { offsets: residueOffsets } = model.atomicHierarchy.residueAtomSegments;
+        const chainIndex = model.atomicHierarchy.chainAtomSegments.index;
+
+        for (let rI = 0 as ResidueIndex; rI < residueCount; rI++) {
+            const cI = chainIndex[residueOffsets[rI]];
+            const key = `${model.atomicHierarchy.chains.auth_asym_id.value(cI)} ${model.atomicHierarchy.residues.auth_seq_id.value(rI)}`;
+
+            if (!conservationMap.has(key)) continue;
+            const ann = conservationMap.get(key)!;
+            for (let aI = residueOffsets[rI]; aI < residueOffsets[rI + 1]; aI++) {
+                map.set(aI, ann);
+            }
+        }
+        return { value: map };
+    },
+    coloring: {
+        getColor(e: number) {
+            if (e < 1 || e > 100) return AssociatedDataDefaultColor;
+            return AssociatedDataPalette[e - 1];
+        },
+        defaultColor: AssociatedDataDefaultColor
+    },
+    getLabel(e) {
+        if (e === 100) return `Evolutionary Conservation: Insufficient Data`;
+        return e ? `Evolutionary Conservation: ${e}` : void 0;
+    },
+});
+
+
+
