@@ -44,6 +44,7 @@ import { AnimateCameraRock } from 'Molstar/mol-plugin-state/animation/built-in/c
 import { AnimateAssemblyUnwind } from 'Molstar/mol-plugin-state/animation/built-in/assembly-unwind';
 //import { ModelInfo2, StateElements } from './helpers';
 import { AESData, HelixData, PhaseData, ShannonEntropy } from './annotation';
+import { HighlightColoring } from './annotation';
 import { TwinConsData } from './annotation';
 import { CustomData } from './annotation';
 import { AssociatedData } from './annotation';
@@ -242,7 +243,7 @@ class PDBeMolstarPlugin {
         }
 
         if(this.initParams.hideCanvasControls) {
-            if(this.initParams.hideCanvasControls.indexOf('expand') > -1) pdbePluginSpec.config.push([PluginConfig.Viewport.ShowExpand, false]);
+            //if(this.initParams.hideCanvasControls.indexOf('expand') > -1) pdbePluginSpec.config.push([PluginConfig.Viewport.ShowExpand, false]);
             if(this.initParams.hideCanvasControls.indexOf('selection') > -1) pdbePluginSpec.config.push([PluginConfig.Viewport.ShowSelectionMode, false]);
             if(this.initParams.hideCanvasControls.indexOf('animation') > -1) pdbePluginSpec.config.push([PluginConfig.Viewport.ShowAnimation, false]);
         };
@@ -296,6 +297,9 @@ class PDBeMolstarPlugin {
         this.plugin.representation.structure.themes.colorThemeRegistry.add(TwinConsData.colorThemeProvider!);
         this.plugin.managers.lociLabels.addProvider(TwinConsData.labelProvider!);
         this.plugin.customModelProperties.register(TwinConsData.propertyProvider, true);
+        this.plugin.representation.structure.themes.colorThemeRegistry.add(HighlightColoring.colorThemeProvider!);
+        this.plugin.managers.lociLabels.addProvider(HighlightColoring.labelProvider!);
+        this.plugin.customModelProperties.register(HighlightColoring.propertyProvider, true);
         this.plugin.representation.structure.themes.colorThemeRegistry.add(CustomData.colorThemeProvider!);
         this.plugin.managers.lociLabels.addProvider(CustomData.labelProvider!);
         this.plugin.customModelProperties.register(CustomData.propertyProvider, true);
@@ -811,6 +815,21 @@ class PDBeMolstarPlugin {
             const state = this.state;
             const tree = state.build();
             const colorTheme = { name: TwinConsData.propertyProvider.descriptor.name, params: this.plugin.representation.structure.themes.colorThemeRegistry.get(TwinConsData.propertyProvider.descriptor.name).defaultValues };
+            if (!params || !!params.sequence) {
+                tree.to(StateElements.SequenceVisual).update(StateTransforms.Representation.StructureRepresentation3D, old => ({ ...old, colorTheme }));
+            }
+            if (params && !!params.het) {
+                tree.to(StateElements.HetVisual).update(StateTransforms.Representation.StructureRepresentation3D, old => ({ ...old, colorTheme }));
+            }
+            await PluginCommands.State.Update(this.plugin, { state, tree });
+        },
+        highlighting: async (params?: { sequence?: boolean, het?: boolean, keepStyle?: boolean, data: [] }) => {
+            if (!params || !params.keepStyle) {
+               // await this.updateStyle({ sequence: { kind: 'spacefill' } }, true);
+            }
+            const state = this.state;
+            const tree = state.build();
+            const colorTheme = { name: HighlightColoring.propertyProvider.descriptor.name, params: this.plugin.representation.structure.themes.colorThemeRegistry.get(HighlightColoring.propertyProvider.descriptor.name).defaultValues };
             if (!params || !!params.sequence) {
                 tree.to(StateElements.SequenceVisual).update(StateTransforms.Representation.StructureRepresentation3D, old => ({ ...old, colorTheme }));
             }

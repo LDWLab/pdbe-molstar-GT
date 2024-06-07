@@ -340,6 +340,9 @@
 ].reverse().map(([r, g, b]) => Color.fromRgb(r, g, b));
  const TwinConsDefaultColor = Color(0x999999);
 
+ const HighlightPalette: Color[] = [[102, 255, 51]].map(([r, g, b]) => Color.fromRgb(r, g, b));
+ const HighlightDefaultColor = Color(0x999999);
+/*
  function hasValues(obj: any): boolean {
     if (obj == undefined) {
         return false
@@ -351,33 +354,94 @@
     }
     return false; 
   }
-  
+  */
 
-var data:any = []
+/*var data:any = []
 let check = function() {
-    setTimeout(function () {
-      if (!(window as any).getAnnotationArray) 
-        check();
-      else {
-        let getAnnotationArray = (window as any).getAnnotationArray;
-        if (!hasValues(getAnnotationArray())) {
-            check();
-        } else {
-            data = getAnnotationArray()
-            //console.log(data)
+    setInterval(function () {
+        if ((window as any).getAnnotationArray) {
+            let getAnnotationArray = (window as any).getAnnotationArray;
+            let maskedAnnotationArray = (window as any).maskedAnnotationArray;
+            if (hasValues(getAnnotationArray())) {
+                if((window as any).isMasked) {
+                    if (data != maskedAnnotationArray) {
+                        data = maskedAnnotationArray
+                        shannonEntropyData = data
+                    }
+                } else if (getAnnotationArray() != data){
+                    data = getAnnotationArray()
+                    shannonEntropyData = data
+                }
+                //console.log(data)
+            }
         }
-      }
     }, 1000);
-  };
-  check();
+};
 
- export const ShannonEntropy = CustomElementProperty.create<number>({
+check();*/
+
+//export var shannonEntropyData = data
+
+export function getAnnotations() {
+    if((window as any).vm.checked_filter) {
+        return (window as any).maskedAnnotationArray;
+    } else {
+        return (window as any).getAnnotationArray();
+    }
+}
+
+export var HighlightColoring = CustomElementProperty.create<number>({
+    name: 'highlight-color-wrapper',
+    label: 'Highlighting',
+    type: 'static',
+
+    async getData(model: Model, ctx: CustomProperty.Context) {
+        const conservationMap = new Map<string, number>();
+        const data = getAnnotations()
+        const annotations = data['SE'];
+        for (const e of annotations) {
+            for (const r of e.ids) {
+                conservationMap.set(r, 1);
+            }
+        }
+        const map = new Map<ElementIndex, number>();
+        const { _rowCount: residueCount } = model.atomicHierarchy.residues;
+        const { offsets: residueOffsets } = model.atomicHierarchy.residueAtomSegments;
+        const chainIndex = model.atomicHierarchy.chainAtomSegments.index;
+
+        for (let rI = 0 as ResidueIndex; rI < residueCount; rI++) {
+            const cI = chainIndex[residueOffsets[rI]];
+            const key = `${model.atomicHierarchy.chains.auth_asym_id.value(cI)} ${model.atomicHierarchy.residues.auth_seq_id.value(rI)}`;
+
+            if (!conservationMap.has(key)) continue;
+            const ann = conservationMap.get(key)!;
+            for (let aI = residueOffsets[rI]; aI < residueOffsets[rI + 1]; aI++) {
+                map.set(aI, ann);
+            }
+        }
+        return { value: map };
+    },
+    coloring: {
+        getColor(e: number) {
+            if (e < 1 || e > 1) return HighlightDefaultColor;
+            return HighlightPalette[e - 1];
+        },
+        defaultColor: HighlightDefaultColor
+    },
+    getLabel(e) {
+        if (e === 100) return `Evolutionary Conservation: Insufficient Data`;
+        return e ? `Evolutionary Conservation: ${e}` : void 0;
+    },
+});
+
+ export var ShannonEntropy = CustomElementProperty.create<number>({
      name: 'shannon-entropy-wrapper',
      label: 'Shannon Entropy',
      type: 'static',
 
      async getData(model: Model, ctx: CustomProperty.Context) {
          const conservationMap = new Map<string, number>();
+         const data = getAnnotations()
          const annotations = data['SE'];
          for (const e of annotations) {
              for (const r of e.ids) {
@@ -421,6 +485,7 @@ let check = function() {
 
     async getData(model: Model, ctx: CustomProperty.Context) {
         const conservationMap = new Map<string, number>();
+        const data = getAnnotations()
         const annotations = data['TWC'];
         for (const e of annotations) {
             for (const r of e.ids) {
@@ -464,6 +529,7 @@ export const CustomData = CustomElementProperty.create<number>({
 
     async getData(model: Model, ctx: CustomProperty.Context) {
         const conservationMap = new Map<string, number>();
+        const data = getAnnotations()
         const annotations = data['CD'];
         for (const e of annotations) {
             for (const r of e.ids) {
@@ -506,6 +572,7 @@ export const AssociatedData = CustomElementProperty.create<number>({
 
     async getData(model: Model, ctx: CustomProperty.Context) {
         const conservationMap = new Map<string, number>();
+        const data = getAnnotations()
         const annotations = data['AD'];
         for (const e of annotations) {
             for (const r of e.ids) {
@@ -549,6 +616,7 @@ export const HelixData = CustomElementProperty.create<number>({
 
     async getData(model: Model, ctx: CustomProperty.Context) {
         const conservationMap = new Map<string, number>();
+        const data = getAnnotations()
         const annotations = data['HD'];
         for (const e of annotations) {
             for (const r of e.ids) {
@@ -592,6 +660,7 @@ export const PhaseData = CustomElementProperty.create<number>({
 
     async getData(model: Model, ctx: CustomProperty.Context) {
         const conservationMap = new Map<string, number>();
+        const data = getAnnotations()
         const annotations = data['PD'];
         for (const e of annotations) {
             for (const r of e.ids) {
@@ -635,6 +704,7 @@ export const AESData = CustomElementProperty.create<number>({
 
     async getData(model: Model, ctx: CustomProperty.Context) {
         const conservationMap = new Map<string, number>();
+        const data = getAnnotations()
         const annotations = data['AESD'];
         for (const e of annotations) {
             for (const r of e.ids) {
